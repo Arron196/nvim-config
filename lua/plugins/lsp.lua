@@ -44,8 +44,9 @@ return {
     },
     opts = {
       keymap = {
-        preset = "default",
+        preset = "super-tab",
         ["<C-space>"] = { "show", "show_documentation", "hide_documentation" },
+        ["<CR>"] = { "select_and_accept", "fallback" },
       },
       appearance = {
         nerd_font_variant = "mono",
@@ -76,6 +77,11 @@ return {
       },
       sources = {
         default = { "lsp", "path", "snippets", "buffer" },
+        providers = {
+          snippets = {
+            score_offset = 4,
+          },
+        },
       },
       fuzzy = {
         implementation = "prefer_rust_with_warning",
