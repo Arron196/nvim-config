@@ -5,6 +5,8 @@ local run_state = {
   win = nil,
 }
 
+local uv = vim.uv or vim.loop
+
 local function open_tutor(locale, tutorial)
   vim.cmd("language messages " .. locale)
   vim.cmd("Tutor " .. tutorial)
@@ -12,6 +14,21 @@ end
 
 local function ps_quote(value)
   return "'" .. value:gsub("'", "''") .. "'"
+end
+
+local function system_name()
+  return uv.os_uname().sysname
+end
+
+local function is_windows()
+  return system_name() == "Windows_NT"
+end
+
+local function shell_quote(value)
+  if is_windows() then
+    return ps_quote(value)
+  end
+  return vim.fn.shellescape(value)
 end
 
 local function join_path(...)
@@ -35,44 +52,125 @@ local function find_upward(start_dir, marker)
   return matches[1]
 end
 
+local function pick_executable(candidates)
+  for _, candidate in ipairs(candidates) do
+    if vim.fn.executable(candidate) == 1 then
+      return candidate
+    end
+  end
+  return nil
+end
+
+local function executable_suffix()
+  if is_windows() then
+    return ".exe"
+  end
+  return ""
+end
+
+local function shell_runner()
+  if is_windows() then
+    local shell = pick_executable({ "pwsh", "powershell" })
+    if not shell then
+      return nil
+    end
+
+    local args = { shell }
+    if shell == "pwsh" then
+      table.insert(args, "-NoLogo")
+    end
+    table.insert(args, "-Command")
+    return args
+  end
+
+  local shell = vim.env.SHELL
+  if not shell or shell == "" then
+    shell = vim.o.shell
+  end
+  if not shell or shell == "" then
+    shell = "/bin/sh"
+  end
+
+  return { shell, "-lc" }
+end
+
+local function shell_command(command)
+  local runner = shell_runner()
+  if not runner then
+    return nil
+  end
+
+  local cmd = vim.deepcopy(runner)
+  table.insert(cmd, command)
+  return cmd
+end
+
+local function compile_and_run_command(compile_cmd, exe)
+  local run_cmd = is_windows() and ("& " .. ps_quote(exe)) or shell_quote(exe)
+
+  if is_windows() then
+    return compile_cmd .. "; if ($?) { " .. run_cmd .. " }"
+  end
+
+  return compile_cmd .. " && " .. run_cmd
+end
+
 function M.build_run_spec(path, filetype)
   local dir = file_dir(path)
   local cache_dir = join_path(vim.fn.stdpath("cache"), "run")
   vim.fn.mkdir(cache_dir, "p")
 
   if filetype == "python" then
+    local python = pick_executable({ "python3", "python" })
+    if not python then
+      return nil
+    end
+
+    local pyproject = find_upward(dir, "pyproject.toml")
     return {
-      cwd = find_upward(dir, "pyproject.toml") and file_dir(find_upward(dir, "pyproject.toml")) or dir,
-      command = "python " .. ps_quote(path),
+      cwd = pyproject and file_dir(pyproject) or dir,
+      cmd = { python, path },
     }
   end
 
   if filetype == "go" then
+    if vim.fn.executable("go") ~= 1 then
+      return nil
+    end
+
     return {
       cwd = dir,
-      command = "go run .",
+      cmd = { "go", "run", "." },
     }
   end
 
   if filetype == "rust" then
     local cargo_toml = find_upward(dir, "Cargo.toml")
-    if cargo_toml then
+    if cargo_toml and vim.fn.executable("cargo") == 1 then
       return {
         cwd = file_dir(cargo_toml),
-        command = "cargo run",
+        cmd = { "cargo", "run" },
       }
     end
 
-    local exe = join_path(cache_dir, file_stem(path) .. ".exe")
+    if vim.fn.executable("rustc") ~= 1 then
+      return nil
+    end
+
+    local exe = join_path(cache_dir, file_stem(path) .. executable_suffix())
+    local command = shell_command(
+      compile_and_run_command(
+        "rustc " .. shell_quote(path) .. " -o " .. shell_quote(exe),
+        exe
+      )
+    )
+    if not command then
+      return nil
+    end
+
     return {
       cwd = dir,
-      command = "rustc "
-        .. ps_quote(path)
-        .. " -o "
-        .. ps_quote(exe)
-        .. "; if ($?) { & "
-        .. ps_quote(exe)
-        .. " }",
+      cmd = command,
     }
   end
 
@@ -82,17 +180,20 @@ function M.build_run_spec(path, filetype)
       return nil
     end
 
-    local exe = join_path(cache_dir, file_stem(path) .. ".exe")
+    local exe = join_path(cache_dir, file_stem(path) .. executable_suffix())
+    local command = shell_command(
+      compile_and_run_command(
+        cc .. " " .. shell_quote(path) .. " -O0 -g -o " .. shell_quote(exe),
+        exe
+      )
+    )
+    if not command then
+      return nil
+    end
+
     return {
       cwd = dir,
-      command = cc
-        .. " "
-        .. ps_quote(path)
-        .. " -O0 -g -o "
-        .. ps_quote(exe)
-        .. "; if ($?) { & "
-        .. ps_quote(exe)
-        .. " }",
+      cmd = command,
     }
   end
 
@@ -102,24 +203,32 @@ function M.build_run_spec(path, filetype)
       return nil
     end
 
-    local exe = join_path(cache_dir, file_stem(path) .. ".exe")
+    local exe = join_path(cache_dir, file_stem(path) .. executable_suffix())
+    local command = shell_command(
+      compile_and_run_command(
+        cxx .. " " .. shell_quote(path) .. " -std=c++20 -O0 -g -o " .. shell_quote(exe),
+        exe
+      )
+    )
+    if not command then
+      return nil
+    end
+
     return {
       cwd = dir,
-      command = cxx
-        .. " "
-        .. ps_quote(path)
-        .. " -std=c++20 -O0 -g -o "
-        .. ps_quote(exe)
-        .. "; if ($?) { & "
-        .. ps_quote(exe)
-        .. " }",
+      cmd = command,
     }
   end
 
   if filetype == "lua" then
+    local lua = pick_executable({ "lua", "luajit" })
+    if not lua then
+      return nil
+    end
+
     return {
       cwd = dir,
-      command = "lua " .. ps_quote(path),
+      cmd = { lua, path },
     }
   end
 
@@ -146,13 +255,7 @@ local function open_run_terminal(spec)
   vim.bo[buf].buflisted = false
   vim.bo[buf].bufhidden = "wipe"
 
-  vim.fn.termopen({
-    "pwsh",
-    "-NoLogo",
-    "-NoExit",
-    "-Command",
-    spec.command,
-  }, {
+  vim.fn.termopen(spec.cmd, {
     cwd = spec.cwd,
   })
 
