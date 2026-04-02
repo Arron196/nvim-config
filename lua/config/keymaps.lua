@@ -1,0 +1,30 @@
+local map = vim.keymap.set
+
+map("n", "<Esc>", "<cmd>nohlsearch<CR>")
+map("n", "<leader>w", "<cmd>write<CR>", { desc = "Save file" })
+map("n", "<leader>q", "<cmd>quit<CR>", { desc = "Quit window" })
+map("n", "<leader>Q", "<cmd>qa!<CR>", { desc = "Quit all" })
+map("n", "<leader>ru", function()
+  require("config.commands").run_current_file()
+end, { desc = "Run current file" })
+map("n", "<leader>sh", "<cmd>split<CR>", { desc = "Horizontal split" })
+map("n", "<leader>sv", "<cmd>vsplit<CR>", { desc = "Vertical split" })
+map("n", "<leader>so", "<cmd>only<CR>", { desc = "Only current window" })
+map("n", "<leader>se", "<C-w>=", { desc = "Equalize windows" })
+map("n", "<S-h>", "<cmd>bprevious<CR>", { desc = "Previous buffer" })
+map("n", "<S-l>", "<cmd>bnext<CR>", { desc = "Next buffer" })
+
+map("n", "<C-h>", "<C-w><C-h>", { desc = "Focus left window" })
+map("n", "<C-l>", "<C-w><C-l>", { desc = "Focus right window" })
+map("n", "<C-j>", "<C-w><C-j>", { desc = "Focus lower window" })
+map("n", "<C-k>", "<C-w><C-k>", { desc = "Focus upper window" })
+map("n", "<C-Up>", "<cmd>resize +3<CR>", { desc = "Increase window height" })
+map("n", "<C-Down>", "<cmd>resize -3<CR>", { desc = "Decrease window height" })
+map("n", "<C-Left>", "<cmd>vertical resize -5<CR>", { desc = "Decrease window width" })
+map("n", "<C-Right>", "<cmd>vertical resize +5<CR>", { desc = "Increase window width" })
+
+map("n", "<leader>un", function()
+  vim.opt.relativenumber = not vim.opt.relativenumber:get()
+end, { desc = "Toggle relative number" })
+
+map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
