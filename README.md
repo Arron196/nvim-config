@@ -40,6 +40,7 @@ Personal Neovim configuration for macOS, Linux, and Windows, focused on Python, 
 - Smooth scrolling and animated cursor
 - Chinese tutor helpers: `:TutorZh` and `:TutorZh2`
 - Run current file in a bottom terminal split with `<leader>ru`
+- LeetCode CN workflow inside Neovim with `leetcode.nvim`
 
 ## Requirements
 
@@ -138,9 +139,37 @@ After startup, run `:checkhealth` if something looks off.
 - `<leader>fr`: recent files
 - `<leader>cf`: format current buffer
 - `<leader>ru`: run current file
+- `<leader>ll`: LeetCode problem list
+- `<leader>ld`: LeetCode daily problem
+- `<leader>lr`: LeetCode random problem
+- `<leader>lt`: LeetCode test current problem
+- `<leader>ls`: LeetCode submit current problem
+- `<leader>lc`: update LeetCode cookie
 - `<leader>sh`: horizontal split
 - `<leader>sv`: vertical split
 - `<leader>so`: keep only current window
 - `<leader>se`: equalize windows
 - `<S-h>` / `<S-l>`: previous / next buffer
 - `<C-h/j/k/l>`: move across windows
+
+## LeetCode CN
+
+This config includes [`kawre/leetcode.nvim`](https://github.com/kawre/leetcode.nvim) configured for `leetcode.cn`.
+
+Common entry points:
+
+- `:Leet`
+- `<leader>ll` for the full problem list
+- `<leader>ld` for the daily problem
+- `<leader>lr` for a random problem
+
+First login:
+
+1. Open `:Leet`
+2. Run `:Leet cookie update`
+3. Paste the `Cookie` value copied from the browser request headers for `leetcode.cn`
+
+Notes:
+
+- The plugin is configured with `non_standalone = true`, so you can open it from your normal editing session.
+- `html` Treesitter support is installed for better problem description formatting.

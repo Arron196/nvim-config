@@ -15,6 +15,7 @@ return {
         { "<leader>e", desc = "explorer" },
         { "<leader>f", group = "find" },
         { "<leader>g", group = "git" },
+        { "<leader>l", group = "leetcode" },
         { "<leader>r", group = "run" },
         { "<leader>s", group = "split" },
         { "<leader>u", group = "ui" },

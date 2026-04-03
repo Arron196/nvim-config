@@ -164,6 +164,11 @@ return {
           lsp_format = "fallback",
         }
       end,
+      formatters = {
+        clang_format = {
+          prepend_args = { "--style=Microsoft" },
+        },
+      },
       formatters_by_ft = {
         lua = { "stylua" },
         python = { "ruff_format" },
